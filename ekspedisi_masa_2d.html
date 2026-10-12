@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ekspedisi Masa 2D: Misi Hafazan Surah Al-'Asr</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            font-family: 'Nunito', sans-serif; 
+            background-color: #e0f2fe; /* Light blue background */
+        }
+        .arabic-text { font-family: 'Amiri', serif; direction: rtl; line-height: 1.8; }
+        
+        /* Screens */
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            display: none;
+            flex-direction: column; justify-content: flex-start; align-items: center;
+            padding: 20px; overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .screen.active { display: flex; animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Modals & Dialogs */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); display: none; flex-direction: column; justify-content: flex-start; align-items: center; z-index: 100; backdrop-filter: blur(4px); padding: 40px 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.3s ease-out; }
+        .dialog-box { background: white; border-radius: 24px; padding: 24px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.4); position: relative; margin: auto; flex-shrink: 0; max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        
+        /* High-Contrast Buttons */
+        .btn { 
+            font-weight: 900; /* Extra bold for visibility */
+            padding: 16px 28px; 
+            border-radius: 9999px; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px; 
+            border: none; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            font-size: 1.1rem;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        .btn:hover { filter: brightness(1.1); transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.2); }
+        .btn:active { transform: translateY(1px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        
+        .btn-blue { background: linear-gradient(to bottom, #3b82f6, #2563eb); color: #ffffff; border-bottom: 5px solid #1d4ed8; }
+        .btn-green { background: linear-gradient(to bottom, #22c55e, #16a34a); color: #ffffff; border-bottom: 5px solid #15803d; }
+        .btn-yellow { background: linear-gradient(to bottom, #fbbf24, #f59e0b); color: #451a03; border-bottom: 5px solid #d97706; text-shadow: none; } /* Dark text for yellow */
+        .btn-red { background: linear-gradient(to bottom, #ef4444, #dc2626); color: #ffffff; border-bottom: 5px solid #b91c1c; }
+        .btn-slate { background: linear-gradient(to bottom, #64748b, #475569); color: #ffffff; border-bottom: 5px solid #334155; }
+        .btn:disabled { background: #cbd5e1; border-bottom: 5px solid #94a3b8; color: #64748b; cursor: not-allowed; transform: none; box-shadow: none; text-shadow: none; }
+
+        /* UI Elements */
+        .star-badge { background: #fbbf24; color: #78350f; padding: 8px 20px; border-radius: 999px; font-weight: 900; font-size: 1.2rem; border: 3px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: inline-flex; align-items: center; gap: 8px; }
+        
+        /* Map Cards */
+        .station-card { background: white; border-radius: 20px; padding: 20px; text-align: center; border: 4px solid #e2e8f0; transition: all 0.3s; position: relative; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .station-card.locked { opacity: 0.7; filter: grayscale(100%); border-color: #cbd5e1; }
+        .station-card.locked::after { content: '\f023'; font-family: 'Font Awesome 6 Free'; font-weight: 900; position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; font-size: 4rem; color: #64748b; z-index: 10; }
+        .station-card.active { border-color: #3b82f6; transform: scale(1.02); box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.3); }
+        .station-card.completed { border-color: #22c55e; background-color: #f0fdf4; }
+
+        /* Recording Pulse */
+        .recording-pulse { animation: recPulse 1.2s infinite; background: #ef4444; color: white !important; }
+        @keyframes recPulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 50% { transform: scale(1.1); } 100% { transform: scale(1); box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); } }
+
+        /* Drag & Drop / Tap to Move styling */
+        .verse-card { background: white; border: 3px solid #cbd5e1; border-radius: 16px; padding: 18px; margin: 10px 0; cursor: pointer; transition: all 0.2s; font-size: 1.6rem; text-align: center; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .verse-card:hover { border-color: #3b82f6; transform: scale(1.03); background-color: #f0f9ff; }
+        .verse-slot { background: #f8fafc; border: 3px dashed #cbd5e1; border-radius: 16px; padding: 20px; margin: 10px 0; min-height: 80px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+        
+        /* Dice UI */
+        #dice-container { width: 120px; height: 120px; margin: 20px auto; perspective: 1000px; }
+        .dice-3d { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 1.5s cubic-bezier(0.1, 1, 0.2, 1); }
+        .dice-face { position: absolute; width: 120px; height: 120px; background: white; border: 4px solid #1e293b; border-radius: 16px; display: flex; justify-content: center; align-items: center; font-size: 50px; font-weight: 900; color: #1e293b; box-shadow: inset 0 0 15px rgba(0,0,0,0.1); }
+        .front { transform: translateZ(60px); } .back { transform: rotateY(180deg) translateZ(60px); }
+        .right { transform: rotateY(90deg) translateZ(60px); } .left { transform: rotateY(-90deg) translateZ(60px); }
+        .top { transform: rotateX(90deg) translateZ(60px); } .bottom { transform: rotateX(-90deg) translateZ(60px); }
+    </style>
+</head>
+<body>
+
+    <!-- Audio Files -->
+    <audio id="audio-surah-asr" src="103_shatery_asr.mp3" preload="auto"></audio>
+    <audio id="sfx-success" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3" preload="auto"></audio>
+    <audio id="sfx-wrong" src="https://assets.mixkit.co/active_storage/sfx/2997/2997-preview.mp3" preload="auto"></audio>
+    <audio id="sfx-chime" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3" preload="auto"></audio>
+
+    <div id="ui-layer">
+        
+        <!-- ================= SCREEN: MAIN MENU ================= -->
+        <div id="screen-register" class="screen active">
+            <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full border-4 border-blue-400 relative my-auto">
+                <div class="text-center mb-8 mt-2">
+                    <div class="w-28 h-28 bg-blue-100 rounded-full border-4 border-blue-400 mx-auto mb-6 flex items-center justify-center text-5xl text-blue-600 shadow-inner">
+                        <i class="fas fa-compass"></i>
+                    </div>
+                    <h1 class="text-4xl font-black text-blue-900 mb-2 tracking-tight">EKSPEDISI MASA</h1>
+                    <h2 class="text-xl font-bold text-green-700 bg-green-100 py-2 px-6 rounded-full inline-block border-2 border-green-300">Pengembaraan Bermula!</h2>
+                </div>
+                
+                <div class="space-y-6 text-left">
+                    <div>
+                        <label class="block text-gray-800 font-extrabold mb-2 text-lg"><i class="fas fa-user text-blue-500 mr-2"></i>Nama Penuh:</label>
+                        <input type="text" id="reg-name" class="w-full px-5 py-4 border-4 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 font-bold text-gray-900 text-lg bg-gray-50 transition-colors" placeholder="Contoh: Ahmad Hakim">
+                    </div>
+                    <div>
+                        <label class="block text-gray-800 font-extrabold mb-2 text-lg"><i class="fas fa-school text-green-500 mr-2"></i>Kelas:</label>
+                        <input type="text" id="reg-kelas" class="w-full px-5 py-4 border-4 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 font-bold text-gray-900 text-lg bg-gray-50 transition-colors" placeholder="Contoh: 3 Amanah">
+                    </div>
+                    
+                    <button class="btn btn-green w-full py-5 text-xl mt-4" onclick="startGame()">
+                        <i class="fas fa-play text-2xl"></i> MULA PENGEMBARAAN
+                    </button>
+                    
+                    <div class="mt-8 pt-6 border-t-4 border-gray-100 text-center">
+                        <button class="text-slate-500 hover:text-slate-800 font-extrabold text-base transition-colors" onclick="showScreen('screen-teacher-login')">
+                            <i class="fas fa-chalkboard-teacher mr-1"></i> Ruang Guru
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN: SET INDUKSI ================= -->
+        <div id="screen-induksi" class="screen">
+            <div class="w-full max-w-4xl mx-auto flex flex-col h-full justify-center items-center py-4">
+                <div class="bg-white rounded-3xl shadow-2xl p-6 md:p-8 w-full border-4 border-blue-400 relative">
+                    <div class="text-center mb-6">
+                        <h2 class="text-3xl font-black text-blue-900"><i class="fas fa-hourglass-half text-yellow-500 mr-3"></i>Misi Masa Berharga</h2>
+                        <p class="text-gray-600 font-extrabold text-lg mt-2">Perhatikan dua situasi di bawah:</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-green-50 p-6 rounded-2xl border-4 border-green-200 text-center transform transition hover:scale-105">
+                            <div class="text-6xl mb-4">👨‍🎓📚</div>
+                            <h3 class="font-black text-green-900 text-xl mb-2">Murid A</h3>
+                            <p class="font-bold text-green-700">Menggunakan masa lapang untuk mengulangkaji pelajaran dan menyiapkan kerja sekolah.</p>
+                        </div>
+                        <div class="bg-red-50 p-6 rounded-2xl border-4 border-red-200 text-center transform transition hover:scale-105">
+                            <div class="text-6xl mb-4">🎮😴</div>
+                            <h3 class="font-black text-red-900 text-xl mb-2">Murid B</h3>
+                            <p class="font-bold text-red-700">Leka bermain permainan video sehingga lewat malam dan kerja sekolah tidak siap.</p>
+                        </div>
+                    </div>
+
+                    <div id="induksi-questions" class="bg-blue-50 border-4 border-blue-200 rounded-2xl p-6 text-center">
+                        <h4 class="font-black text-blue-900 text-xl mb-4">Fikirkan Bersama... 🤔</h4>
+                        <ul class="text-left font-bold text-gray-800 space-y-3 inline-block mb-6">
+                            <li><i class="fas fa-question-circle text-blue-500 mr-2"></i> Apakah perbezaan antara dua orang murid ini?</li>
+                            <li><i class="fas fa-question-circle text-blue-500 mr-2"></i> Mengapa kita perlu menggunakan masa dengan baik?</li>
+                            <li><i class="fas fa-question-circle text-blue-500 mr-2"></i> Bolehkah masa yang telah berlalu dikembalikan?</li>
+                        </ul>
+                        
+                        <div class="text-left mb-6">
+                            <label class="block text-blue-900 font-extrabold mb-2 text-lg"><i class="fas fa-keyboard text-blue-500 mr-2"></i>Taip pandangan anda di sini:</label>
+                            <textarea id="induksi-answer" rows="3" class="w-full px-5 py-4 border-4 border-blue-200 rounded-2xl focus:outline-none focus:border-blue-500 font-bold text-gray-900 text-base bg-white transition-colors placeholder-gray-400" placeholder="Pada pendapat saya, perbezaan antara murid A dan B ialah..."></textarea>
+                        </div>
+
+                        <button class="btn btn-yellow w-full py-4 text-xl" onclick="showConclusion()">
+                            <i class="fas fa-paper-plane text-2xl"></i> HANTAR JAWAPAN & LIHAT MISI
+                        </button>
+                    </div>
+
+                    <div id="induksi-conclusion" class="hidden bg-[#fefce8] border-4 border-[#fde047] rounded-2xl p-6 text-center animate-[fadeIn_0.5s_ease-out]">
+                        <h4 class="font-black text-yellow-800 text-2xl mb-4">Rahsia Misi Terbongkar! ✨</h4>
+                        <p class="font-extrabold text-gray-800 text-lg mb-4 leading-relaxed">
+                            Islam sangat mementingkan masa. Hari ini kita akan meneroka dan menghafaz <span class="text-blue-700 text-xl">Surah Al-'Asr</span>.
+                        </p>
+                        <p class="font-bold text-gray-700 text-md mb-6 leading-relaxed bg-white p-4 rounded-xl border-2 border-yellow-200 shadow-sm">
+                            Surah ini mengingatkan manusia tentang masa dan kerugian jika tidak beriman, beramal soleh serta saling menasihati dalam kebenaran dan kesabaran.
+                        </p>
+                        <button class="btn btn-green w-full py-4 text-xl shadow-lg" onclick="startMap()">
+                            <i class="fas fa-map-marked-alt text-2xl"></i> TERUSKAN KE PETA MISI
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN: MAP (REPLACES 3D) ================= -->
+        <div id="screen-map" class="screen">
+            <div class="w-full max-w-4xl mx-auto flex flex-col h-full">
+                <!-- Header -->
+                <div class="bg-white rounded-3xl p-4 shadow-lg border-4 border-blue-200 flex justify-between items-center mb-8 shrink-0">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 bg-blue-100 rounded-full border-4 border-blue-400 flex items-center justify-center text-2xl text-blue-600">
+                            <i class="fas fa-user-astronaut"></i>
+                        </div>
+                        <div>
+                            <div id="map-name" class="font-black text-xl text-gray-800">Pemain</div>
+                            <div id="map-kelas" class="text-sm text-gray-500 font-bold">Kelas</div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-2">
+                        <div class="star-badge">
+                            <i class="fas fa-star"></i> <span id="map-stars">0</span> / 3
+                        </div>
+                        <button class="text-red-500 font-bold text-sm hover:text-red-700" onclick="exitGame()">
+                            <i class="fas fa-sign-out-alt"></i> Keluar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Map Content (Stations) -->
+                <div class="flex-1 overflow-y-auto pb-10">
+                    <h3 class="text-center font-black text-2xl text-blue-900 mb-8 bg-white/50 py-2 rounded-full backdrop-blur-sm">Pilih Stesen Misi</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+                        <!-- Station 1 -->
+                        <div id="card-s1" class="station-card active cursor-pointer" onclick="openStation(1)">
+                            <div class="w-20 h-20 mx-auto bg-blue-100 rounded-full flex items-center justify-center text-4xl text-blue-600 mb-4 border-4 border-blue-200">
+                                <i class="fas fa-book-open"></i>
+                            </div>
+                            <h4 class="font-black text-xl text-gray-800 mb-2">Stesen 1</h4>
+                            <p class="font-bold text-blue-600 text-lg mb-4">Gua Bacaan</p>
+                            <div class="mt-auto">
+                                <span id="status-s1" class="inline-block bg-blue-100 text-blue-800 font-extrabold px-4 py-2 rounded-full text-sm">SEDIA UNTUK MULA</span>
+                            </div>
+                        </div>
+
+                        <!-- Path Connector (Visual only, hidden on mobile) -->
+                        <div class="hidden md:block absolute top-1/2 left-1/3 w-1/6 h-2 bg-blue-300 -z-10 transform -translate-y-1/2 border-y border-blue-400"></div>
+
+                        <!-- Station 2 -->
+                        <div id="card-s2" class="station-card locked cursor-pointer" onclick="openStation(2)">
+                            <div class="w-20 h-20 mx-auto bg-purple-100 rounded-full flex items-center justify-center text-4xl text-purple-600 mb-4 border-4 border-purple-200">
+                                <i class="fas fa-puzzle-piece"></i>
+                            </div>
+                            <h4 class="font-black text-xl text-gray-800 mb-2">Stesen 2</h4>
+                            <p class="font-bold text-purple-600 text-lg mb-4">Laluan Escape</p>
+                            <div class="mt-auto">
+                                <span id="status-s2" class="inline-block bg-gray-100 text-gray-500 font-extrabold px-4 py-2 rounded-full text-sm">TERKUNCI</span>
+                            </div>
+                        </div>
+
+                        <!-- Path Connector -->
+                        <div class="hidden md:block absolute top-1/2 left-2/3 w-1/6 h-2 bg-gray-300 -z-10 transform -translate-y-1/2 border-y border-gray-400" id="path-2-3"></div>
+
+                        <!-- Station 3 -->
+                        <div id="card-s3" class="station-card locked cursor-pointer" onclick="openStation(3)">
+                            <div class="w-20 h-20 mx-auto bg-yellow-100 rounded-full flex items-center justify-center text-4xl text-yellow-600 mb-4 border-4 border-yellow-200">
+                                <i class="fas fa-dice"></i>
+                            </div>
+                            <h4 class="font-black text-xl text-gray-800 mb-2">Stesen 3</h4>
+                            <p class="font-bold text-yellow-600 text-lg mb-4">Dataran Dadu</p>
+                            <div class="mt-auto">
+                                <span id="status-s3" class="inline-block bg-gray-100 text-gray-500 font-extrabold px-4 py-2 rounded-full text-sm">TERKUNCI</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= MODAL: STATION 1 ================= -->
+        <div id="modal-station1" class="modal-overlay">
+            <div class="dialog-box border-t-8 border-blue-600 max-w-2xl w-full">
+                <div class="text-center mb-6">
+                    <h2 class="text-3xl font-black text-blue-900"><i class="fas fa-book-open text-blue-500 mr-3"></i>GUA BACAAN</h2>
+                    <p class="text-gray-600 font-extrabold text-lg mt-2">Misi: Dengar dan baca Surah Al-'Asr 3 kali.</p>
+                </div>
+                
+                <div class="bg-[#fefce8] border-4 border-[#fde047] rounded-3xl p-8 mb-8 shadow-inner text-center">
+                    <p class="arabic-text text-4xl font-bold text-gray-900 mb-8">بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ</p>
+                    <p class="arabic-text text-5xl font-bold text-gray-900 mb-6 leading-loose">وَٱلْعَصْرِ ١</p>
+                    <p class="arabic-text text-5xl font-bold text-gray-900 mb-6 leading-loose">إِنَّ ٱلْإِنسَـٰنَ لَفِى خُسْرٍ ٢</p>
+                    <p class="arabic-text text-5xl font-bold text-gray-900 leading-loose">إِلَّا ٱلَّذِينَ ءَامَنُوا۟ وَعَمِلُوا۟ ٱلصَّـٰلِحَـٰتِ وَتَوَاصَوْا۟ بِٱلْحَقِّ وَتَوَاصَوْا۟ بِٱلصَّبْرِ ٣</p>
+                </div>
+
+                <div class="flex justify-center mb-8">
+                    <button class="btn btn-blue w-full max-w-md py-4 text-xl" id="s1-btn-play" onclick="s1ToggleAudio()">
+                        <i class="fas fa-volume-up text-2xl"></i> DENGAR BACAAN
+                    </button>
+                </div>
+
+                <div class="bg-gray-50 border-4 border-gray-200 rounded-3xl p-6 mb-8 text-left">
+                    <h4 class="font-black text-gray-800 mb-4 text-center border-b-2 border-gray-200 pb-3 text-lg">Langkah Hafazan (Ikut Urutan)</h4>
+                    <div class="space-y-4">
+                        <!-- Langkah 1 -->
+                        <label class="flex items-center gap-4 p-4 bg-white border-2 border-gray-300 rounded-xl cursor-pointer hover:bg-blue-50 transition-colors shadow-sm" id="label-baca-1">
+                            <input type="checkbox" id="chk-baca-1" class="w-8 h-8 text-blue-600 rounded-lg focus:ring-blue-500" onchange="s1CheckProgress()">
+                            <div class="flex-1">
+                                <span class="font-extrabold text-gray-800 text-lg block">Langkah 1: Baca Sendiri</span>
+                                <span class="text-sm text-gray-600 font-bold block mt-1">Baca ayat di atas secara bersendirian hingga lancar.</span>
+                            </div>
+                        </label>
+                        
+                        <!-- Langkah 2 -->
+                        <label class="flex items-center gap-4 p-4 bg-white border-2 border-gray-300 rounded-xl cursor-not-allowed opacity-50 shadow-sm transition-all" id="label-baca-2">
+                            <input type="checkbox" id="chk-baca-2" class="w-8 h-8 text-blue-600 rounded-lg focus:ring-blue-500" disabled onchange="s1CheckProgress()">
+                            <div class="flex-1">
+                                <span class="font-extrabold text-gray-800 text-lg block">Langkah 2: Semakan Keluarga</span>
+                                <span class="text-sm text-gray-600 font-bold block mt-1">Perdengarkan bacaan kepada ibu bapa, abang, atau kakak.</span>
+                            </div>
+                        </label>
+
+                        <!-- Langkah 3 (Recording) -->
+                        <div id="s1-task-3" class="p-4 bg-white border-2 border-gray-300 rounded-xl opacity-50 pointer-events-none transition-all shadow-sm">
+                            <div class="mb-4 text-center">
+                                <span class="font-extrabold text-gray-800 text-lg block">Langkah 3: Rakam Bacaan</span>
+                                <span class="text-sm text-gray-600 font-bold block mt-1">Rakam bacaan anda sambil melihat teks di atas sebagai bukti.</span>
+                            </div>
+                            
+                            <div class="flex flex-col items-center">
+                                <button class="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-3xl cursor-pointer transition-transform hover:scale-105 border-4 border-red-300 mb-2 shadow-md" id="s1-btn-record" onclick="toggleRecording('Stesen 1 (Bacaan Teks)', 's1-btn-record', 's1-status')">
+                                    <i class="fas fa-microphone"></i>
+                                </button>
+                                <p id="s1-status" class="font-bold text-gray-800 text-sm h-5 text-center">Tekan mikrofon untuk merakam</p>
+                                
+                                <div id="s1-audio-preview" class="mt-4 hidden flex-col items-center gap-3 w-full">
+                                    <audio id="s1-audio-player" controls class="w-full h-10"></audio>
+                                    <button class="btn btn-blue py-3 px-6 text-base w-full max-w-xs" onclick="submitRecording('Stesen 1 (Bacaan Teks)', 's1-audio-preview', 's1-btn-done')">
+                                        <i class="fas fa-paper-plane mr-2"></i> HANTAR RAKAMAN
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row justify-between gap-4">
+                    <button class="btn bg-gray-300 text-gray-700 shadow-none hover:bg-gray-400" onclick="s1Close()"><i class="fas fa-times"></i> TUTUP</button>
+                    <button class="btn btn-green py-4 px-8 text-xl" id="s1-btn-done" disabled onclick="s1Complete()"><i class="fas fa-check-circle"></i> SELESAI MISI</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= MODAL: STATION 2 ================= -->
+        <div id="modal-station2" class="modal-overlay">
+            <div class="dialog-box border-t-8 border-purple-600 max-w-4xl w-full">
+                <div class="text-center mb-6">
+                    <h2 class="text-3xl font-black text-purple-900"><i class="fas fa-puzzle-piece text-purple-500 mr-3"></i>LALUAN ESCAPE</h2>
+                </div>
+                
+                <!-- Phase 1: Arrange -->
+                <div id="s2-phase1">
+                    <p class="text-gray-700 font-extrabold text-lg text-center mb-8 bg-purple-50 p-4 rounded-xl border-2 border-purple-200">Misi 1: Sentuh kad untuk menyusun ayat mengikut urutan yang betul.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="bg-blue-50 p-6 rounded-2xl border-4 border-blue-200">
+                            <h3 class="font-black text-blue-900 text-center mb-4 text-xl">Pilihan Ayat</h3>
+                            <div id="s2-choices" class="space-y-4 min-h-[250px]"></div>
+                        </div>
+                        
+                        <div class="bg-purple-50 p-6 rounded-2xl border-4 border-purple-200">
+                            <h3 class="font-black text-purple-900 text-center mb-4 text-xl">Ruang Jawapan</h3>
+                            <div id="s2-answers" class="space-y-4 min-h-[250px]"></div>
+                        </div>
+                    </div>
+                    
+                    <p id="s2-error-msg" class="text-red-600 font-black text-center mt-6 h-8 text-xl"></p>
+                    
+                    <div class="flex flex-col sm:flex-row justify-between gap-4 mt-6 pt-6 border-t-2">
+                        <button class="btn bg-gray-300 text-gray-800" onclick="closeModal('modal-station2')">TUTUP</button>
+                        <button class="btn btn-purple py-4 px-8 text-xl" style="background: linear-gradient(to bottom, #9333ea, #7e22ce); color: white; border-bottom: 5px solid #6b21a8;" id="s2-btn-check" onclick="s2CheckAnswer()"><i class="fas fa-search"></i> SEMAK SUSUNAN</button>
+                    </div>
+                </div>
+
+                <!-- Phase 2: Record -->
+                <div id="s2-phase2" style="display: none;">
+                    <div class="bg-green-100 border-4 border-green-500 text-green-900 p-6 rounded-3xl mb-8 text-center">
+                        <i class="fas fa-check-circle text-6xl mb-4 text-green-600"></i>
+                        <h3 class="font-black text-2xl mb-2">Susunan Tepat!</h3>
+                        <p class="text-lg font-extrabold">Sekarang, baca keseluruhan Surah Al-'Asr tanpa melihat teks.</p>
+                    </div>
+
+                    <div class="text-center p-8 bg-gray-50 rounded-3xl border-4 border-gray-200">
+                        <button class="w-32 h-32 bg-red-100 text-red-600 rounded-full mx-auto flex items-center justify-center text-5xl cursor-pointer transition-transform hover:scale-105 border-8 border-red-300 mb-6 shadow-xl" id="s2-btn-record" onclick="toggleRecording('Stesen 2 (Hafazan Penuh)', 's2-btn-record', 's2-status')">
+                            <i class="fas fa-microphone"></i>
+                        </button>
+                        <p id="s2-status" class="font-black text-gray-800 text-xl h-8">Tekan mikrofon untuk mula (Maks 30s)</p>
+                        
+                        <div id="s2-audio-preview" class="mt-8 hidden flex-col items-center gap-4">
+                            <audio id="s2-audio-player" controls class="w-full max-w-md h-12"></audio>
+                            <button class="btn btn-blue py-4 px-8 text-xl w-full max-w-md" onclick="submitRecording('Stesen 2 (Hafazan Penuh)', 's2-audio-preview', 's2-btn-complete')">
+                                <i class="fas fa-paper-plane"></i> HANTAR RAKAMAN
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row justify-between gap-4 mt-8 pt-6 border-t-2">
+                        <button class="btn bg-gray-300 text-gray-800" onclick="closeModal('modal-station2')">TUTUP</button>
+                        <button class="btn btn-green py-4 px-8 text-xl" id="s2-btn-complete" disabled onclick="s2Complete()"><i class="fas fa-unlock"></i> SELESAI MISI</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= MODAL: STATION 3 ================= -->
+        <div id="modal-station3" class="modal-overlay">
+            <div class="dialog-box border-t-8 border-yellow-500 max-w-2xl w-full">
+                <div class="text-center mb-6">
+                    <h2 class="text-3xl font-black text-yellow-700 drop-shadow-sm"><i class="fas fa-dice text-yellow-500 mr-3"></i>DATARAN DADU</h2>
+                    <p class="text-gray-700 font-extrabold text-lg mt-2 bg-yellow-50 inline-block px-6 py-2 rounded-full border-2 border-yellow-200" id="s3-subtitle">Misi 1: Jawab soalan rawak.</p>
+                </div>
+
+                <div id="s3-dice-area" class="text-center pb-8 pt-4">
+                    <div id="dice-container">
+                        <div class="dice-3d" id="dice">
+                            <div class="dice-face front">1</div>
+                            <div class="dice-face back">6</div>
+                            <div class="dice-face right">3</div>
+                            <div class="dice-face left">4</div>
+                            <div class="dice-face top">2</div>
+                            <div class="dice-face bottom">5</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-yellow py-4 px-10 text-2xl mt-8" id="s3-btn-roll" onclick="s3RollDice()"><i class="fas fa-sync-alt"></i> LEMPAR DADU</button>
+                </div>
+
+                <div id="s3-question-area" class="hidden text-center">
+                    <div class="bg-blue-50 border-4 border-blue-200 p-8 rounded-3xl mb-8">
+                        <h4 class="font-black text-blue-900 mb-4 text-xl">Arahan Soalan:</h4>
+                        <p id="s3-question-text" class="text-2xl font-black text-gray-900 leading-tight"></p>
+                        <p id="s3-question-arabic" class="arabic-text text-5xl font-bold text-gray-900 mt-6 mb-4"></p>
+                    </div>
+
+                    <div class="p-8 bg-gray-50 rounded-3xl border-4 border-gray-200">
+                        <button class="w-32 h-32 bg-red-100 text-red-600 rounded-full mx-auto flex items-center justify-center text-5xl cursor-pointer hover:scale-105 transition-transform border-8 border-red-300 mb-6 shadow-xl" id="s3-btn-record" onclick="toggleRecording(currentS3StationName, 's3-btn-record', 's3-status')">
+                            <i class="fas fa-microphone"></i>
+                        </button>
+                        <p id="s3-status" class="font-black text-gray-800 text-xl h-8">Rakam jawapan anda</p>
+                        
+                        <div id="s3-audio-preview" class="mt-8 hidden flex-col items-center gap-4">
+                            <audio id="s3-audio-player" controls class="w-full h-12"></audio>
+                            <button class="btn btn-blue w-full py-4 text-xl" id="s3-btn-submit" onclick="s3SubmitAnswer()">
+                                <i class="fas fa-paper-plane"></i> HANTAR JAWAPAN
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 border-t-2 pt-6 text-center">
+                    <button class="btn bg-gray-300 text-gray-800 w-full py-4 text-lg" onclick="closeModal('modal-station3')">TUTUP / REHAT</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN: SUCCESS ================= -->
+        <div id="screen-success" class="screen !bg-gradient-to-b !from-blue-600 !to-indigo-950 justify-center p-4">
+            <div class="text-center relative w-full max-w-2xl mx-auto flex flex-col items-center justify-center my-auto">
+                <!-- Confetti & Stars Effects -->
+                <div class="absolute top-10 left-4 text-yellow-300 text-5xl animate-bounce" style="animation-delay: 0.1s">✨</div>
+                <div class="absolute top-32 right-4 text-yellow-300 text-6xl animate-bounce" style="animation-delay: 0.3s">🌟</div>
+                <div class="absolute bottom-32 left-10 text-yellow-300 text-4xl animate-bounce" style="animation-delay: 0.5s">✨</div>
+                <div class="absolute top-0 right-20 text-yellow-300 text-3xl animate-bounce" style="animation-delay: 0.7s">⭐</div>
+                
+                <i class="fas fa-trophy text-9xl text-yellow-400 mb-8 drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] animate-pulse"></i>
+                
+                <h1 class="text-5xl sm:text-6xl font-black text-white mb-4 tracking-wider drop-shadow-lg uppercase">Tahniah!</h1>
+                <h2 class="text-2xl sm:text-3xl font-bold text-blue-200 mb-10 drop-shadow-md">Misi Anda Telah Selesai!</h2>
+                
+                <div class="bg-white/10 backdrop-blur-md p-8 rounded-3xl border-4 border-white/30 shadow-2xl mb-10 text-left w-full max-w-lg mx-auto">
+                    <div class="flex items-center mb-5 pb-5 border-b-2 border-white/20">
+                        <i class="fas fa-user-astronaut text-blue-300 text-4xl mr-4 w-12 text-center"></i>
+                        <div>
+                            <p class="text-blue-200 font-bold text-sm uppercase tracking-widest">Nama Pahlawan</p>
+                            <p class="font-black text-white text-2xl" id="end-name"></p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center mb-5 pb-5 border-b-2 border-white/20">
+                        <i class="fas fa-school text-green-300 text-4xl mr-4 w-12 text-center"></i>
+                        <div>
+                            <p class="text-blue-200 font-bold text-sm uppercase tracking-widest">Kelas</p>
+                            <p class="font-black text-white text-2xl" id="end-kelas"></p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center mb-6">
+                        <i class="fas fa-star text-yellow-400 text-4xl mr-4 w-12 text-center"></i>
+                        <div>
+                            <p class="text-blue-200 font-bold text-sm uppercase tracking-widest">Bintang Terkumpul</p>
+                            <p class="font-black text-white text-2xl"><span id="end-stars"></span> / 3</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-green-500/20 p-4 rounded-xl border border-green-400/50 text-center">
+                        <p class="font-bold text-green-100 text-lg"><i class="fas fa-check-circle text-2xl mb-2 block text-green-400"></i> Rekod hafazan berjaya dihantar ke Papan Pemuka Guru.</p>
+                    </div>
+                </div>
+                
+                <button class="btn btn-yellow w-full max-w-md py-5 text-2xl mx-auto shadow-[0_10px_20px_rgba(0,0,0,0.4)] hover:scale-105 transition-transform" onclick="exitGame()">
+                    <i class="fas fa-home text-3xl"></i> TAMAT PENGEMBARAAN
+                </button>
+                
+                <div class="mt-12 text-center bg-white/10 backdrop-blur-md py-4 px-8 rounded-3xl border-2 border-white/30 shadow-lg" style="animation: fadeIn 1.5s ease-in-out;">
+                    <p class="text-white font-black text-2xl tracking-wide mb-1 drop-shadow-md">"Selamat berPDPR anak muridku!"</p>
+                    <p class="text-yellow-300 font-extrabold text-xl mt-2 drop-shadow-md"><i class="fas fa-heart text-red-400 mr-2 animate-pulse"></i>Ikhlas dari, Ustazah Alya</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN: TEACHER LOGIN ================= -->
+        <div id="screen-teacher-login" class="screen">
+            <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full border-4 border-slate-500 relative my-auto">
+                <button class="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-3xl" onclick="showScreen('screen-register')"><i class="fas fa-times-circle"></i></button>
+                <div class="text-center mb-8 mt-2">
+                    <div class="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-slate-300 text-slate-600 shadow-inner">
+                        <i class="fas fa-chalkboard-teacher text-5xl"></i>
+                    </div>
+                    <h2 class="text-3xl font-black text-slate-900">Ruang Guru</h2>
+                    <p class="text-slate-600 font-extrabold text-lg mt-2">Sistem Semakan Hafazan</p>
+                </div>
+                <div class="space-y-6 text-left">
+                    <div>
+                        <label class="block text-slate-800 font-extrabold mb-2 text-lg">Kata Laluan:</label>
+                        <input type="password" id="teacher-pwd" class="w-full px-5 py-4 border-4 border-slate-300 rounded-2xl focus:border-slate-600 outline-none font-bold text-xl bg-gray-50" placeholder="Masukkan kata laluan">
+                    </div>
+                    <button class="btn btn-slate w-full py-5 text-xl mt-2" onclick="teacherLogin()">LOG MASUK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN: TEACHER DASHBOARD ================= -->
+        <div id="screen-teacher-dashboard" class="screen bg-slate-100 p-0 sm:p-4">
+            <div class="w-full h-full max-w-6xl dashboard-container bg-white rounded-none sm:rounded-3xl shadow-2xl border-0 sm:border-4 border-slate-300 overflow-hidden flex flex-col">
+                
+                <div class="bg-slate-800 text-white p-5 sm:p-6 flex justify-between items-center shrink-0">
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-black"><i class="fas fa-chart-line mr-3 text-blue-400"></i> Papan Pemuka Guru</h1>
+                    </div>
+                    <button class="btn btn-red px-6 py-3" onclick="showScreen('screen-register')">
+                        <i class="fas fa-sign-out-alt"></i> Log Keluar
+                    </button>
+                </div>
+
+                <div class="p-5 bg-slate-100 border-b-4 border-slate-200 shrink-0">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div class="flex-1 min-w-[250px] relative">
+                            <i class="fas fa-search absolute left-4 top-4 text-slate-400 text-lg"></i>
+                            <input type="text" id="filter-search" class="w-full pl-12 pr-5 py-3 bg-white border-2 border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 font-bold text-lg" placeholder="Cari nama murid..." oninput="renderDashboard()">
+                        </div>
+                        <select id="filter-kelas" class="px-5 py-3 bg-white border-2 border-slate-300 rounded-xl outline-none font-bold text-lg" onchange="renderDashboard()">
+                            <option value="">Semua Kelas</option>
+                        </select>
+                        <button class="btn btn-blue py-3 px-6" onclick="loadTeacherDashboard()"><i class="fas fa-sync-alt"></i> Segar Semula</button>
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-5 bg-slate-50" id="dashboard-list">
+                    <div class="text-center py-10 text-slate-500 font-bold">
+                        <i class="fas fa-spinner fa-spin text-5xl mb-4"></i>
+                        <p class="text-xl">Memuatkan data murid...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // State Management
+        let allStudents = [];
+        let allAttempts = [];
+
+        let gameState = {
+            player: null,
+            stationProgress: { s1: false, s2: false, s3: false },
+            stars: 0,
+            recordedAudioBlob: null 
+        };
+
+        // UI Helpers
+        window.showScreen = function(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            const target = document.getElementById(screenId);
+            if(target) target.classList.add('active');
+            if(screenId === 'screen-teacher-dashboard') loadTeacherDashboard();
+            
+            // Reset state induksi jika kembali ke menu utama
+            if(screenId === 'screen-register') {
+                document.getElementById('induksi-questions').classList.remove('hidden');
+                document.getElementById('induksi-conclusion').classList.add('hidden');
+            }
+        };
+
+        window.openModal = function(modalId) { 
+            document.getElementById(modalId).classList.add('active'); 
+        };
+        window.closeModal = function(modalId) { 
+            document.getElementById(modalId).classList.remove('active'); 
+        };
+
+        function playSound(type) {
+            try {
+                const s = document.getElementById('sfx-' + type);
+                if(s) { s.currentTime = 0; s.play().catch(e=>console.log("Audio play prevented")); }
+            } catch(e){}
+        }
+
+        // ==========================================
+        // MAP LOGIC (2D Interface)
+        // ==========================================
+        function updateMapUI() {
+            document.getElementById('map-stars').innerText = gameState.stars;
+            
+            const c1 = document.getElementById('card-s1');
+            const c2 = document.getElementById('card-s2');
+            const c3 = document.getElementById('card-s3');
+            const s1 = document.getElementById('status-s1');
+            const s2 = document.getElementById('status-s2');
+            const s3 = document.getElementById('status-s3');
+            const p23 = document.getElementById('path-2-3');
+
+            // Station 1 Status
+            if(gameState.stationProgress.s1) {
+                c1.classList.remove('active'); c1.classList.add('completed');
+                s1.innerText = "SELESAI"; s1.className = "inline-block bg-green-100 text-green-800 font-extrabold px-4 py-2 rounded-full text-sm";
+                
+                // Unlock Station 2
+                c2.classList.remove('locked');
+                if(!gameState.stationProgress.s2) {
+                    c2.classList.add('active');
+                    s2.innerText = "SEDIA UNTUK MULA"; s2.className = "inline-block bg-blue-100 text-blue-800 font-extrabold px-4 py-2 rounded-full text-sm";
+                }
+            }
+
+            // Station 2 Status
+            if(gameState.stationProgress.s2) {
+                c2.classList.remove('active'); c2.classList.add('completed');
+                s2.innerText = "SELESAI"; s2.className = "inline-block bg-green-100 text-green-800 font-extrabold px-4 py-2 rounded-full text-sm";
+                if(p23) { p23.classList.remove('bg-gray-300', 'border-gray-400'); p23.classList.add('bg-blue-300', 'border-blue-400'); }
+                
+                // Unlock Station 3
+                c3.classList.remove('locked');
+                if(!gameState.stationProgress.s3) {
+                    c3.classList.add('active');
+                    s3.innerText = "SEDIA UNTUK MULA"; s3.className = "inline-block bg-blue-100 text-blue-800 font-extrabold px-4 py-2 rounded-full text-sm";
+                }
+            }
+            
+            // Station 3 Status
+            if(gameState.stationProgress.s3) {
+                c3.classList.remove('active'); c3.classList.add('completed');
+                s3.innerText = "SELESAI"; s3.className = "inline-block bg-green-100 text-green-800 font-extrabold px-4 py-2 rounded-full text-sm";
+            }
+        }
+
+        window.openStation = function(stationNum) {
+            if(stationNum === 1) {
+                initStation1();
+                openModal('modal-station1');
+            }
+            else if(stationNum === 2) {
+                if(!gameState.stationProgress.s1) { alert("Sila selesaikan Stesen 1 dahulu!"); return; }
+                initStation2();
+                openModal('modal-station2');
+            }
+            else if(stationNum === 3) {
+                if(!gameState.stationProgress.s2) { alert("Sila selesaikan Stesen 2 dahulu!"); return; }
+                initStation3();
+                openModal('modal-station3');
+            }
+        };
+
+        // ==========================================
+        // GAME LIFECYCLE
+        // ==========================================
+        window.startGame = function() {
+            const name = document.getElementById('reg-name').value.trim();
+            const kelas = document.getElementById('reg-kelas').value.trim();
+            if(!name || !kelas) { alert("Sila masukkan nama dan kelas dengan lengkap!"); return; }
+            
+            const pId = "EM-" + Math.floor(Math.random()*9000 + 1000);
+            gameState.player = { studentId: pId, name: name, kelas: kelas, timestamp: new Date().toISOString() };
+            
+            allStudents.push({ ...gameState.player, attempts: [] });
+            
+            document.getElementById('map-name').innerText = name;
+            document.getElementById('map-kelas').innerText = kelas + ' | ' + pId;
+            
+            gameState.stationProgress = { s1: false, s2: false, s3: false };
+            gameState.stars = 0;
+            
+            document.getElementById('induksi-answer').value = '';
+            
+            updateMapUI();
+            
+            // Tunjuk set induksi dahulu sebelum peta
+            showScreen('screen-induksi');
+        };
+
+        window.showConclusion = function() {
+            const answerInput = document.getElementById('induksi-answer').value.trim();
+            if(!answerInput) {
+                alert("Sila taipkan pandangan anda sebelum meneruskan pengembaraan!");
+                return;
+            }
+            
+            // Simpan jawapan ke dalam rekod pelajar
+            if(gameState.player) {
+                gameState.player.induksiAnswer = answerInput;
+                const st = allStudents.find(s => s.studentId === gameState.player.studentId);
+                if(st) st.induksiAnswer = answerInput;
+            }
+
+            document.getElementById('induksi-questions').classList.add('hidden');
+            document.getElementById('induksi-conclusion').classList.remove('hidden');
+            playSound('chime');
+        };
+
+        window.startMap = function() {
+            showScreen('screen-map');
+        };
+
+        window.exitGame = function() {
+            // Remove any active modals safely just in case
+            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+            showScreen('screen-register');
+        };
+
+        // ==========================================
+        // AUDIO RECORDING LOGIC
+        // ==========================================
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        let recordingTimer;
+
+        window.toggleRecording = async function(stationName, btnId, statusId) {
+            if (isRecording) { stopRecording(btnId, statusId); return; }
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    gameState.recordedAudioBlob = blob;
+                    
+                    let previewId = btnId.replace('-btn-record', '-audio-preview');
+                    let playerId = btnId.replace('-btn-record', '-audio-player');
+                    
+                    document.getElementById(playerId).src = URL.createObjectURL(blob);
+                    document.getElementById(previewId).classList.remove('hidden');
+                    document.getElementById(previewId).classList.add('flex');
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                
+                const btn = document.getElementById(btnId);
+                btn.classList.add('recording-pulse');
+                btn.innerHTML = '<i class="fas fa-stop"></i>';
+                
+                let timeLeft = 30;
+                document.getElementById(statusId).innerText = `Merakam... (${timeLeft}s)`;
+                document.getElementById(statusId).classList.add('text-red-600');
+                
+                recordingTimer = setInterval(() => {
+                    timeLeft--;
+                    document.getElementById(statusId).innerText = `Merakam... (${timeLeft}s)`;
+                    if(timeLeft <= 0) stopRecording(btnId, statusId);
+                }, 1000);
+
+            } catch (err) {
+                alert("Sila benarkan akses mikrofon untuk merakam suara.");
+            }
+        };
+
+        function stopRecording(btnId, statusId) {
+            if(mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                clearInterval(recordingTimer);
+                document.getElementById(statusId).innerText = "Rakaman Selesai.";
+                document.getElementById(statusId).classList.remove('text-red-600');
+                
+                const btn = document.getElementById(btnId);
+                btn.classList.remove('recording-pulse');
+                btn.innerHTML = '<i class="fas fa-redo"></i>';
+                
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        window.submitRecording = function(stationName, previewContainerId, unlockBtnId) {
+            if(!gameState.player || !gameState.recordedAudioBlob) return;
+            
+            const reader = new FileReader();
+            reader.readAsDataURL(gameState.recordedAudioBlob);
+            reader.onloadend = function() {
+                const base64Audio = reader.result;
+                const attemptData = {
+                    studentId: gameState.player.studentId, stationName: stationName,
+                    audioBase64: base64Audio, timestamp: new Date().toISOString()
+                };
+                
+                allAttempts.push(attemptData);
+                const st = allStudents.find(s => s.studentId === gameState.player.studentId);
+                if(st) { if(!st.attempts) st.attempts = []; st.attempts.push(attemptData); }
+                
+                playSound('success');
+                
+                document.getElementById(previewContainerId).classList.add('hidden');
+                document.getElementById(previewContainerId).classList.remove('flex');
+                
+                const unlockBtn = document.getElementById(unlockBtnId);
+                if(unlockBtn) {
+                    unlockBtn.disabled = false;
+                    // Switch UI styling to enabled state
+                    unlockBtn.className = "btn btn-green py-4 px-8 text-xl";
+                    unlockBtn.innerHTML = '<i class="fas fa-check-circle"></i> SELESAI MISI';
+                }
+                
+                if(unlockBtnId === 's3-btn-submit') handleS3Submission();
+            }
+        };
+
+        // ==========================================
+        // STATION 1 LOGIC
+        // ==========================================
+        let s1AudioEl = document.getElementById('audio-surah-asr');
+        let s1Playing = false;
+        
+        window.initStation1 = function() {
+            if(!gameState.stationProgress.s1) {
+                // Set semula langkah jika belum siap
+                document.getElementById('chk-baca-1').checked = false;
+                document.getElementById('chk-baca-2').checked = false;
+                s1CheckProgress();
+                
+                const btnDone = document.getElementById('s1-btn-done');
+                btnDone.disabled = true;
+                btnDone.className = "btn btn-green py-4 px-8 text-xl opacity-50 cursor-not-allowed"; 
+                
+                // Set semula UI rakaman
+                document.getElementById('s1-btn-record').innerHTML = '<i class="fas fa-microphone"></i>';
+                document.getElementById('s1-status').innerText = 'Tekan mikrofon untuk merakam';
+                document.getElementById('s1-audio-preview').classList.add('hidden');
+                document.getElementById('s1-audio-preview').classList.remove('flex');
+            }
+        };
+
+        window.s1ToggleAudio = function() {
+            const btn = document.getElementById('s1-btn-play');
+            if(!s1Playing) {
+                s1AudioEl.play();
+                s1Playing = true;
+                btn.innerHTML = '<i class="fas fa-pause text-2xl"></i> JEDA BACAAN';
+                btn.classList.replace('btn-blue', 'btn-yellow');
+            } else {
+                s1AudioEl.pause();
+                s1Playing = false;
+                btn.innerHTML = '<i class="fas fa-volume-up text-2xl"></i> SAMBUNG BACAAN';
+                btn.classList.replace('btn-yellow', 'btn-blue');
+            }
+        };
+        
+        s1AudioEl.onended = function() {
+            s1Playing = false;
+            const btn = document.getElementById('s1-btn-play');
+            btn.innerHTML = '<i class="fas fa-redo text-2xl"></i> ULANG BACAAN';
+            btn.classList.replace('btn-yellow', 'btn-blue');
+        };
+
+        window.s1Close = function() {
+            s1AudioEl.pause(); s1AudioEl.currentTime = 0; s1Playing = false;
+            document.getElementById('s1-btn-play').innerHTML = '<i class="fas fa-volume-up text-2xl"></i> DENGAR BACAAN';
+            document.getElementById('s1-btn-play').classList.replace('btn-yellow', 'btn-blue');
+            closeModal('modal-station1');
+        };
+
+        window.s1CheckProgress = function() {
+            const c1 = document.getElementById('chk-baca-1').checked;
+            const chk2 = document.getElementById('chk-baca-2');
+            const lbl2 = document.getElementById('label-baca-2');
+            const task3 = document.getElementById('s1-task-3');
+            
+            // Logik Urutan Langkah 1 -> Langkah 2
+            if(c1) {
+                chk2.disabled = false;
+                lbl2.classList.remove('cursor-not-allowed', 'opacity-50');
+                lbl2.classList.add('cursor-pointer', 'hover:bg-blue-50');
+            } else {
+                chk2.disabled = true;
+                chk2.checked = false;
+                lbl2.classList.add('cursor-not-allowed', 'opacity-50');
+                lbl2.classList.remove('cursor-pointer', 'hover:bg-blue-50');
+            }
+            
+            // Logik Urutan Langkah 2 -> Langkah 3 (Rakaman)
+            if(chk2.checked) {
+                task3.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                task3.classList.add('opacity-50', 'pointer-events-none');
+            }
+        };
+
+        window.s1Complete = function() {
+            s1Close();
+            gameState.stationProgress.s1 = true;
+            gameState.stars += 1;
+            updateMapUI();
+            playSound('success');
+        };
+
+        // ==========================================
+        // STATION 2 LOGIC
+        // ==========================================
+        const s2Verses = [
+            { id: 'v1', text: 'وَٱلْعَصْرِ ١', order: 1 },
+            { id: 'v2', text: 'إِنَّ ٱلْإِنسَـٰنَ لَفِى خُسْرٍ ٢', order: 2 },
+            { id: 'v3', text: 'إِلَّا ٱلَّذِينَ ءَامَنُوا۟ وَعَمِلُوا۟ ٱلصَّـٰلِحَـٰتِ وَتَوَاصَوْا۟ بِٱلْحَقِّ وَتَوَاصَوْا۟ بِٱلصَّبْرِ ٣', order: 3 }
+        ];
+        let s2CurrentAnswers = [];
+
+        window.initStation2 = function() {
+            document.getElementById('s2-phase1').style.display = 'block';
+            document.getElementById('s2-phase2').style.display = 'none';
+            document.getElementById('s2-error-msg').innerText = '';
+            s2CurrentAnswers = [];
+            
+            let shuffled = [...s2Verses];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            
+            const choicesDiv = document.getElementById('s2-choices');
+            choicesDiv.innerHTML = '';
+            
+            shuffled.forEach(v => {
+                let card = document.createElement('div');
+                card.className = 'verse-card arabic-text';
+                card.id = 'choice-' + v.id;
+                card.innerText = v.text;
+                card.onclick = () => s2MoveToAnswer(v.id);
+                choicesDiv.appendChild(card);
+            });
+            renderS2Answers();
+        };
+
+        window.s2MoveToAnswer = function(id) {
+            if(s2CurrentAnswers.length >= 3) return;
+            const verse = s2Verses.find(v => v.id === id);
+            s2CurrentAnswers.push(verse);
+            document.getElementById('choice-' + id).style.display = 'none';
+            renderS2Answers();
+            playSound('chime');
+        };
+
+        window.s2MoveToChoice = function(index) {
+            const verse = s2CurrentAnswers[index];
+            s2CurrentAnswers.splice(index, 1);
+            document.getElementById('choice-' + verse.id).style.display = 'block';
+            renderS2Answers();
+        };
+
+        function renderS2Answers() {
+            const ansDiv = document.getElementById('s2-answers');
+            ansDiv.innerHTML = '';
+            for(let i=0; i<3; i++) {
+                let slot = document.createElement('div');
+                slot.className = 'verse-slot';
+                if(i < s2CurrentAnswers.length) {
+                    let v = s2CurrentAnswers[i];
+                    slot.className = 'verse-card arabic-text !bg-purple-100 !border-purple-400 !m-2';
+                    slot.innerText = v.text;
+                    slot.onclick = () => s2MoveToChoice(i);
+                } else {
+                    slot.innerHTML = `<span class="text-gray-400 font-extrabold text-xl">Ayat ${i+1}</span>`;
+                }
+                ansDiv.appendChild(slot);
+            }
+        }
+
+        window.s2CheckAnswer = function() {
+            if(s2CurrentAnswers.length < 3) {
+                document.getElementById('s2-error-msg').innerText = 'Sila susun ketiga-tiga ayat dahulu.';
+                return;
+            }
+            
+            let isCorrect = true;
+            for(let i=0; i<3; i++) if(s2CurrentAnswers[i].order !== (i+1)) isCorrect = false;
+            
+            if(isCorrect) {
+                playSound('success');
+                document.getElementById('s2-phase1').style.display = 'none';
+                document.getElementById('s2-phase2').style.display = 'block';
+                document.getElementById('s2-btn-record').innerHTML = '<i class="fas fa-microphone"></i>';
+                document.getElementById('s2-status').innerText = 'Tekan mikrofon untuk mula (Maks 30s)';
+                document.getElementById('s2-audio-preview').classList.add('hidden');
+            } else {
+                playSound('wrong');
+                document.getElementById('s2-error-msg').innerText = 'Susunan kurang tepat. Ketik ayat di ruang jawapan untuk batal dan cuba lagi.';
+            }
+        };
+
+        window.s2Complete = function() {
+            closeModal('modal-station2');
+            gameState.stationProgress.s2 = true;
+            gameState.stars += 1;
+            updateMapUI();
+            playSound('success');
+        };
+
+        // ==========================================
+        // STATION 3 LOGIC
+        // ==========================================
+        let s3Phase = 1; 
+        window.currentS3StationName = "";
+        const s3Questions = [
+            { t: "Sambung ayat berikut daripada hafazan anda:", q: "وَٱلْعَصْرِ ١" },
+            { t: "Sambung ayat berikut daripada hafazan anda:", q: "إِنَّ ٱلْإِنسَـٰنَ لَفِى خُسْرٍ ٢" }
+        ];
+
+        window.initStation3 = function() {
+            s3Phase = 1;
+            document.getElementById('s3-subtitle').innerText = "Misi 1: Jawab soalan rawak.";
+            document.getElementById('s3-dice-area').style.display = 'block';
+            document.getElementById('s3-question-area').classList.add('hidden');
+            const dice = document.getElementById('dice');
+            dice.style.transition = 'none'; dice.style.transform = `rotateX(0deg) rotateY(0deg)`;
+        };
+
+        window.s3RollDice = function() {
+            playSound('chime');
+            document.getElementById('s3-btn-roll').disabled = true;
+            const dice = document.getElementById('dice');
+            dice.style.transition = 'transform 1.5s cubic-bezier(0.1, 1, 0.2, 1)';
+            const rx = (Math.floor(Math.random() * 4) + 4) * 90;
+            const ry = (Math.floor(Math.random() * 4) + 4) * 90;
+            dice.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+            
+            setTimeout(() => { showS3QuestionPhase1(); }, 1800);
+        };
+
+        function showS3QuestionPhase1() {
+            document.getElementById('s3-dice-area').style.display = 'none';
+            document.getElementById('s3-question-area').classList.remove('hidden');
+            const q = s3Questions[Math.floor(Math.random() * s3Questions.length)];
+            currentS3StationName = "Stesen 3 (Soalan Dadu)";
+            document.getElementById('s3-question-text').innerText = q.t;
+            document.getElementById('s3-question-arabic').innerText = q.q;
+            resetS3RecordingUI();
+        }
+
+        function showS3QuestionPhase2() {
+            s3Phase = 2;
+            document.getElementById('s3-subtitle').innerText = "Misi 2: Ujian Akhir.";
+            document.getElementById('s3-dice-area').style.display = 'none';
+            document.getElementById('s3-question-area').classList.remove('hidden');
+            
+            currentS3StationName = "Stesen 3 (Ujian Akhir)";
+            document.getElementById('s3-question-text').innerText = "Bagus! Sekarang, perdengarkan hafazan keseluruhan Surah Al-'Asr tanpa melihat teks sebagai ujian akhir.";
+            document.getElementById('s3-question-arabic').innerText = "";
+            resetS3RecordingUI();
+        }
+
+        function resetS3RecordingUI() {
+            document.getElementById('s3-btn-record').innerHTML = '<i class="fas fa-microphone"></i>';
+            document.getElementById('s3-status').innerText = 'Rakam jawapan anda (Maks 30s)';
+            document.getElementById('s3-audio-preview').classList.add('hidden');
+            
+            const btnSub = document.getElementById('s3-btn-submit');
+            btnSub.innerHTML = '<i class="fas fa-paper-plane"></i> HANTAR JAWAPAN';
+            btnSub.disabled = false;
+            btnSub.className = "btn btn-blue w-full py-4 text-xl"; // Reset class
+        }
+
+        window.s3SubmitAnswer = function() {
+            const btn = document.getElementById('s3-btn-submit');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MENGHANTAR...';
+            submitRecording(currentS3StationName, 's3-audio-preview', 's3-btn-submit');
+        };
+
+        window.handleS3Submission = function() {
+            if(s3Phase === 1) {
+                document.getElementById('s3-question-area').classList.add('hidden');
+                setTimeout(() => { showS3QuestionPhase2(); }, 1000);
+            } else {
+                closeModal('modal-station3');
+                gameState.stationProgress.s3 = true;
+                gameState.stars += 1;
+                updateMapUI();
+                setTimeout(() => { endGame(); }, 500);
+            }
+        };
+
+        function endGame() {
+            playSound('success');
+            document.getElementById('end-name').innerText = gameState.player.name;
+            document.getElementById('end-kelas').innerText = gameState.player.kelas;
+            document.getElementById('end-stars').innerText = gameState.stars;
+            showScreen('screen-success');
+        }
+
+        // ==========================================
+        // TEACHER DASHBOARD
+        // ==========================================
+        window.teacherLogin = function() {
+            const pwd = document.getElementById('teacher-pwd').value;
+            if(pwd === "1234" || pwd === "") { 
+                document.getElementById('teacher-pwd').value = '';
+                showScreen('screen-teacher-dashboard');
+            } else { alert("Kata laluan salah."); }
+        };
+
+        window.loadTeacherDashboard = function() {
+            const kelasFilter = document.getElementById('filter-kelas');
+            let kSet = new Set();
+            allStudents.forEach(s => kSet.add(s.kelas));
+            kelasFilter.innerHTML = '<option value="">Semua Kelas</option>';
+            Array.from(kSet).sort().forEach(k => { kelasFilter.innerHTML += `<option value="${k}">${k}</option>`; });
+            renderDashboard();
+        };
+
+        window.renderDashboard = function() {
+            const search = document.getElementById('filter-search').value.toLowerCase();
+            const fKelas = document.getElementById('filter-kelas').value;
+            const listEl = document.getElementById('dashboard-list');
+            listEl.innerHTML = '';
+            
+            let sortedStudents = [...allStudents].sort((a,b) => a.name.localeCompare(b.name));
+            
+            sortedStudents.forEach(student => {
+                if(search && !student.name.toLowerCase().includes(search) && !student.studentId.toLowerCase().includes(search)) return;
+                if(fKelas && student.kelas !== fKelas) return;
+                
+                let html = `
+                <div class="bg-white rounded-2xl shadow-sm border-4 border-slate-200 mb-6 overflow-hidden">
+                    <div class="p-5 bg-slate-50 border-b-4 border-slate-200 flex justify-between items-center cursor-pointer hover:bg-slate-100 transition-colors" onclick="document.getElementById('b-${student.studentId}').classList.toggle('hidden')">
+                        <div>
+                            <h3 class="font-black text-2xl text-slate-900">${student.name}</h3>
+                            <p class="text-base font-bold text-slate-500 mt-1">${student.kelas} | ID: ${student.studentId}</p>
+                        </div>
+                        <i class="fas fa-chevron-down text-slate-400 text-2xl"></i>
+                    </div>
+                    <div id="b-${student.studentId}" class="p-6 hidden bg-white">
+                `;
+                
+                if(student.induksiAnswer) {
+                    html += `
+                    <div class="mb-6 bg-[#fefce8] p-5 rounded-2xl border-2 border-[#fde047] shadow-sm">
+                        <h4 class="text-lg font-black text-yellow-900 border-b-2 border-yellow-200 pb-2 mb-3"><i class="fas fa-comment-dots text-yellow-500 mr-2"></i> Jawapan Set Induksi</h4>
+                        <p class="text-gray-800 font-bold italic">"${student.induksiAnswer}"</p>
+                    </div>
+                    `;
+                }
+
+                if(student.attempts && student.attempts.length > 0) {
+                    html += `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">`;
+                    student.attempts.forEach((att) => {
+                        let dateStr = new Date(att.timestamp).toLocaleString('ms-MY', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+                        html += `
+                        <div class="bg-blue-50 p-5 rounded-2xl border-2 border-blue-200 shadow-sm relative">
+                            <h4 class="text-lg font-black text-blue-900 border-b-2 border-blue-200 pb-3 mb-3"><i class="fas fa-map-marker-alt text-blue-500 mr-2"></i> ${att.stationName}</h4>
+                            <span class="text-sm font-bold text-slate-500 mb-3 block">${dateStr}</span>
+                            ${att.audioBase64 ? `<audio src="${att.audioBase64}" controls class="w-full h-10 mb-2"></audio>` : `<p class="text-sm font-bold text-red-500">Tiada Audio</p>`}
+                        </div>
+                        `;
+                    });
+                    html += `</div>`;
+                } else {
+                    html += `<p class="text-lg text-slate-400 font-extrabold text-center py-6">Belum ada rekod hafazan dihantar.</p>`;
+                }
+                html += `</div></div>`;
+                listEl.innerHTML += html;
+            });
+            
+            if(listEl.innerHTML === '') listEl.innerHTML = `<div class="text-center py-10 font-black text-2xl text-slate-400">Tiada rekod ditemui.</div>`;
+        };
+    </script>
+</body>
+</html>
